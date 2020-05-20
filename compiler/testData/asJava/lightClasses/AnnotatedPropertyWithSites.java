@@ -1,5 +1,6 @@
 public final class Test /* Test*/ {
   @MyAnnotation5()
+  @org.jetbrains.annotations.NotNull()
   private java.lang.String bar;
 
   @MyAnnotation()
