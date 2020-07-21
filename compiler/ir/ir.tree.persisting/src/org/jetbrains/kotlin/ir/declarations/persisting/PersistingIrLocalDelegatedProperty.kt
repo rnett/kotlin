@@ -19,28 +19,40 @@ package org.jetbrains.kotlin.ir.declarations.persisting
 import org.jetbrains.kotlin.descriptors.VariableDescriptorWithAccessors
 import org.jetbrains.kotlin.ir.ObsoleteDescriptorBasedAPI
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.persisting.carriers.Carrier
 import org.jetbrains.kotlin.ir.declarations.persisting.carriers.LocalDelegatedPropertyCarrier
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.symbols.IrLocalDelegatedPropertySymbol
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.name.Name
 
 // TODO make not persistent
 class PersistingIrLocalDelegatedProperty(
-    startOffset: Int,
-    endOffset: Int,
+    override val startOffset: Int,
+    override val endOffset: Int,
     origin: IrDeclarationOrigin,
     override val symbol: IrLocalDelegatedPropertySymbol,
     override val name: Name,
     override val type: IrType,
     override val isVar: Boolean
 ) :
-    PersistingIrDeclarationBase<LocalDelegatedPropertyCarrier>(startOffset, endOffset, origin),
+    PersistingIrDeclarationBase<LocalDelegatedPropertyCarrier>,
     IrLocalDelegatedProperty,
     LocalDelegatedPropertyCarrier {
 
     init {
         symbol.bind(this)
     }
+
+    override var lastModified: Int = stageController.currentStage
+    override var loweredUpTo: Int = stageController.currentStage
+    override var values: Array<Carrier>? = null
+    override val createdOn: Int = stageController.currentStage
+
+    override var parentField: IrDeclarationParent? = null
+    override var originField: IrDeclarationOrigin = origin
+    override var removedOn: Int = Int.MAX_VALUE
+    override var annotationsField: List<IrConstructorCall> = emptyList()
 
     @ObsoleteDescriptorBasedAPI
     override val descriptor: VariableDescriptorWithAccessors

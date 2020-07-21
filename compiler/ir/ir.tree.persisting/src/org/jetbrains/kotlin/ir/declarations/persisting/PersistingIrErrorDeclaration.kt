@@ -19,12 +19,26 @@ package org.jetbrains.kotlin.ir.declarations.persisting
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.ir.ObsoleteDescriptorBasedAPI
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
 import org.jetbrains.kotlin.ir.declarations.IrErrorDeclaration
+import org.jetbrains.kotlin.ir.declarations.persisting.carriers.Carrier
 import org.jetbrains.kotlin.ir.declarations.persisting.carriers.ErrorCarrier
+import org.jetbrains.kotlin.ir.declarations.stageController
+import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 
 @OptIn(ObsoleteDescriptorBasedAPI::class)
 class PersistingIrErrorDeclaration(
-    startOffset: Int,
-    endOffset: Int,
+    override val startOffset: Int,
+    override val endOffset: Int,
     override val descriptor: DeclarationDescriptor
-) : PersistingIrDeclarationBase<ErrorCarrier>(startOffset, endOffset, IrDeclarationOrigin.DEFINED), IrErrorDeclaration, ErrorCarrier
+) : PersistingIrDeclarationBase<ErrorCarrier>, IrErrorDeclaration, ErrorCarrier {
+    override var lastModified: Int = stageController.currentStage
+    override var loweredUpTo: Int = stageController.currentStage
+    override var values: Array<Carrier>? = null
+    override val createdOn: Int = stageController.currentStage
+
+    override var parentField: IrDeclarationParent? = null
+    override var originField: IrDeclarationOrigin = IrDeclarationOrigin.DEFINED
+    override var removedOn: Int = Int.MAX_VALUE
+    override var annotationsField: List<IrConstructorCall> = emptyList()
+}

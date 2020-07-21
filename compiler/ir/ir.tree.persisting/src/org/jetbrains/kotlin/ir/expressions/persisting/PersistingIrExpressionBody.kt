@@ -16,20 +16,30 @@
 
 package org.jetbrains.kotlin.ir.expressions.persisting
 
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationFactory
 import org.jetbrains.kotlin.ir.declarations.persisting.PersistingIrBodyBase
 import org.jetbrains.kotlin.ir.declarations.persisting.PersistingIrDeclarationFactory
+import org.jetbrains.kotlin.ir.declarations.persisting.carriers.Carrier
+import org.jetbrains.kotlin.ir.declarations.stageController
 import org.jetbrains.kotlin.ir.expressions.IrExpression
 import org.jetbrains.kotlin.ir.expressions.IrExpressionBody
 
 class PersistingIrExpressionBody private constructor(
-    startOffset: Int,
-    endOffset: Int,
+    override val startOffset: Int,
+    override val endOffset: Int,
     private var expressionField: IrExpression? = null,
-    initializer: (IrExpressionBody.() -> Unit)? = null
+    override var initializer: (PersistingIrExpressionBody.() -> Unit)? = null
 ) :
-    PersistingIrBodyBase<PersistingIrExpressionBody>(startOffset, endOffset, initializer),
+    PersistingIrBodyBase<PersistingIrExpressionBody>,
     IrExpressionBody {
+
+    override var lastModified: Int = stageController.currentStage
+    override var loweredUpTo: Int = stageController.currentStage
+    override var values: Array<Carrier>? = null
+    override val createdOn: Int = stageController.currentStage
+
+    override var containerField: IrDeclaration? = null
 
     constructor(expression: IrExpression) : this(expression.startOffset, expression.endOffset, expression, null)
 

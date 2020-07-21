@@ -17,18 +17,28 @@
 package org.jetbrains.kotlin.ir.expressions.persisting
 
 import org.jetbrains.kotlin.ir.IrStatement
+import org.jetbrains.kotlin.ir.declarations.IrDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationFactory
 import org.jetbrains.kotlin.ir.declarations.persisting.PersistingIrBodyBase
 import org.jetbrains.kotlin.ir.declarations.persisting.PersistingIrDeclarationFactory
+import org.jetbrains.kotlin.ir.declarations.persisting.carriers.Carrier
+import org.jetbrains.kotlin.ir.declarations.stageController
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 
 class PersistingIrBlockBody(
-    startOffset: Int,
-    endOffset: Int,
-    initializer: (IrBlockBody.() -> Unit)? = null
+    override val startOffset: Int,
+    override val endOffset: Int,
+    override var initializer: (PersistingIrBlockBody.() -> Unit)? = null
 ) :
-    PersistingIrBodyBase<PersistingIrBlockBody>(startOffset, endOffset, initializer),
+    PersistingIrBodyBase<PersistingIrBlockBody>,
     IrBlockBody {
+
+    override var lastModified: Int = stageController.currentStage
+    override var loweredUpTo: Int = stageController.currentStage
+    override var values: Array<Carrier>? = null
+    override val createdOn: Int = stageController.currentStage
+
+    override var containerField: IrDeclaration? = null
 
     constructor(startOffset: Int, endOffset: Int, statements: List<IrStatement>) : this(startOffset, endOffset) {
         statementsField.addAll(statements)
