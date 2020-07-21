@@ -18,9 +18,18 @@ fun <D> ControlFlowGraph.traverse(
 ) {
     for (node in getNodesInOrder(direction)) {
         node.accept(visitor, data)
-        if (node is CFGNodeWithCfgOwner<*>) {
-            node.subGraph?.traverse(direction, visitor, data)
+
+        if (node is PostponedLambdaEnterNode && node.fir.isLambda && node.fir.invocationKind != null) continue
+
+        val subGraph = (node as? CFGNodeWithCfgOwner<*>)?.subGraph
+        // PropertyInitializerEnterNode and InitBlockEnterNode have their parent graph as child subgraph. We need to avoid this cycles.
+        if (subGraph != null && subGraph !== this) {
+            subGraph.traverse(direction, visitor, data)
         }
+    }
+
+    subGraphs.forEach {
+        it.traverse(direction, visitor, data)
     }
 }
 
