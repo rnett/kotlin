@@ -14,7 +14,7 @@ import react.dom.div
 import react.dom.input
 #end
 
-interface WelcomeProps : RProps {
+external interface WelcomeProps : RProps {
     var name: String
 }
 
