@@ -111,7 +111,7 @@ fun AbstractMultiModuleTest.doSetup(projectModel: ProjectResolveModel) {
             dependsOnModuleNames = resolveModule.dependencies.filter { it.kind == ResolveDependency.Kind.DEPENDS_ON }.map { it.to.name }
         )
         // New inference is enabled here as these tests are using type refinement feature that is working only along with NI
-        ideaModule.enableMultiPlatform(additionalCompilerArguments = "-Xnew-inference")
+        ideaModule.enableMultiPlatform(additionalCompilerArguments = "-Xnew-inference " + (resolveModule.additionalCompilerArgs ?: ""))
     }
 }
 
