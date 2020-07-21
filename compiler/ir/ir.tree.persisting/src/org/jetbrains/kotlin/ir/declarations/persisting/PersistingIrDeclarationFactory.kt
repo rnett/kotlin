@@ -189,7 +189,7 @@ object PersistingIrDeclarationFactory : IrDeclarationFactory {
         isDelegated: Boolean,
         isExternal: Boolean,
         isExpect: Boolean,
-    ): IrFakeOverrideProperty =
+    ): IrProperty =
         PersistingIrFakeOverrideProperty(
             startOffset, endOffset, origin, name, visibility, modality,
             isVar, isConst, isLateinit, isDelegated, isExternal, isExpect,
