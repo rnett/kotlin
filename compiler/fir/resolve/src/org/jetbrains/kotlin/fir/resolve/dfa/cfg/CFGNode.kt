@@ -141,6 +141,12 @@ class FunctionExitNode(owner: ControlFlowGraph, override val fir: FirFunction<*>
         return visitor.visitFunctionExitNode(this, data)
     }
 }
+class LocalFunctionDeclarationNode(owner: ControlFlowGraph, override val fir: FirFunction<*>, level: Int, id: Int) : CFGNodeWithCfgOwner<FirFunction<*>>(owner, level, id) {
+    override fun <R, D> accept(visitor: ControlFlowGraphVisitor<R, D>, data: D): R {
+        return visitor.visitLocalFunctionDeclarationNode(this, data)
+    }
+}
+
 
 // ----------------------------------- Default arguments -----------------------------------
 

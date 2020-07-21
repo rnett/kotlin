@@ -5,6 +5,10 @@
 
 package org.jetbrains.kotlin.fir.analysis.cfa
 
+import org.jetbrains.kotlin.fir.declarations.FirAnonymousObject
+import org.jetbrains.kotlin.fir.declarations.FirFunction
+import org.jetbrains.kotlin.fir.declarations.FirRegularClass
+import org.jetbrains.kotlin.fir.declarations.isLocal
 import org.jetbrains.kotlin.fir.resolve.dfa.cfg.*
 
 enum class TraverseDirection {
@@ -18,8 +22,19 @@ fun <D> ControlFlowGraph.traverse(
 ) {
     for (node in getNodesInOrder(direction)) {
         node.accept(visitor, data)
-        if (node is CFGNodeWithCfgOwner<*>) {
-            node.subGraph?.traverse(direction, visitor, data)
+
+        val subGraph = (node as? CFGNodeWithCfgOwner<*>)?.subGraph
+        if (subGraph != null) {
+            subGraph.traverse(direction, visitor, data)
+
+            val owner = subGraph.owner?.declaration
+            if (owner is FirRegularClass && owner.isLocal || owner is FirAnonymousObject) {
+                subGraph.subGraphs.forEach {
+                    if (it.declaration is FirFunction<*>) {
+                        it.traverse(direction, visitor, data)
+                    }
+                }
+            }
         }
     }
 }

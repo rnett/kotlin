@@ -65,6 +65,9 @@ fun ControlFlowGraphBuilder.createFunctionExitNode(fir: FirFunction<*>): Functio
         currentGraph.exitNode = it
     }
 
+fun ControlFlowGraphBuilder.createLocalFunctionDeclarationNode(fir: FirFunction<*>): LocalFunctionDeclarationNode =
+    LocalFunctionDeclarationNode(currentGraph, fir, levelCounter, createId())
+
 fun ControlFlowGraphBuilder.createBinaryOrEnterNode(fir: FirBinaryLogicExpression): BinaryOrEnterNode =
     BinaryOrEnterNode(currentGraph, fir, levelCounter, createId())
 

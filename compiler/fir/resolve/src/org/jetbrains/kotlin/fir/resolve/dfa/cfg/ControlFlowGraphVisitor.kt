@@ -18,6 +18,10 @@ abstract class ControlFlowGraphVisitor<out R, in D> {
         return visitNode(node, data)
     }
 
+    open fun visitLocalFunctionDeclarationNode(node: LocalFunctionDeclarationNode, data: D): R {
+        return visitNode(node, data)
+    }
+
     // ----------------------------------- Default arguments -----------------------------------
 
     open fun visitExitDefaultArgumentsNode(node: ExitDefaultArgumentsNode, data: D): R {

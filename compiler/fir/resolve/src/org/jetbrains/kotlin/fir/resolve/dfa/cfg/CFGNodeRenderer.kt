@@ -19,6 +19,7 @@ fun CFGNode<*>.render(): String =
             when (this@render) {
                 is FunctionEnterNode -> "Enter function \"${fir.name()}\""
                 is FunctionExitNode -> "Exit function \"${fir.name()}\""
+                is LocalFunctionDeclarationNode -> "Local function declaration ${owner.name}"
 
                 is BlockEnterNode -> "Enter block"
                 is BlockExitNode -> "Exit block"

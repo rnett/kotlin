@@ -160,7 +160,7 @@ class ControlFlowGraphBuilder {
 
     // ----------------------------------- Regular function -----------------------------------
 
-    fun enterFunction(function: FirFunction<*>): Pair<FunctionEnterNode, CFGNode<*>?> {
+    fun enterFunction(function: FirFunction<*>): Triple<FunctionEnterNode, LocalFunctionDeclarationNode?, CFGNode<*>?> {
         require(function !is FirAnonymousFunction)
         val name = when (function) {
             is FirSimpleFunction -> function.name.asString()
@@ -170,10 +170,15 @@ class ControlFlowGraphBuilder {
         }
         val graph = ControlFlowGraph(function, name, ControlFlowGraph.Kind.Function)
         // function is local
-        if (mode == Mode.Body) {
+        val localFunctionNode = runIf(mode == Mode.Body) {
             assert(currentGraph.kind.withBody)
             currentGraph.addSubGraph(graph)
+
+            createLocalFunctionDeclarationNode(function).also {
+                addNewSimpleNode(it)
+            }
         }
+
         pushGraph(
             graph = graph,
             mode = Mode.Body
@@ -195,7 +200,7 @@ class ControlFlowGraphBuilder {
             exitTargetsForTry.push(it)
         }
 
-        return enterNode to previousNode
+        return Triple(enterNode, localFunctionNode, previousNode)
     }
 
     fun exitFunction(function: FirFunction<*>): Pair<FunctionExitNode, ControlFlowGraph> {
@@ -361,6 +366,13 @@ class ControlFlowGraphBuilder {
         val exitNode = createClassExitNode(klass)
         var node: CFGNode<*> = createClassEnterNode(klass)
         for (declaration in klass.declarations) {
+            if (classGraph.declaration is FirRegularClass && classGraph.declaration.isLocal && declaration is FirFunction<*>) {
+                val functionGraph = declaration.controlFlowGraphReference.controlFlowGraph
+                if (functionGraph != null && functionGraph.owner == null) {
+                    classGraph.addSubGraph(functionGraph)
+                }
+            }
+
             val graph = when (declaration) {
                 is FirProperty -> declaration.controlFlowGraphReference.controlFlowGraph
                 is FirAnonymousInitializer -> declaration.controlFlowGraphReference.controlFlowGraph
