@@ -22,7 +22,10 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationFactory
 import org.jetbrains.kotlin.ir.declarations.impl.IrDeclarationFactoryImpl
 import org.jetbrains.kotlin.ir.expressions.IrBlockBody
 
-class IrBlockBodyImpl(startOffset: Int, endOffset: Int) : IrElementBase(startOffset, endOffset), IrBlockBody {
+class IrBlockBodyImpl(
+    override val startOffset: Int,
+    override val endOffset: Int
+) : IrElementBase(), IrBlockBody {
     constructor(startOffset: Int, endOffset: Int, statements: List<IrStatement>) : this(startOffset, endOffset) {
         this.statements.addAll(statements)
     }
