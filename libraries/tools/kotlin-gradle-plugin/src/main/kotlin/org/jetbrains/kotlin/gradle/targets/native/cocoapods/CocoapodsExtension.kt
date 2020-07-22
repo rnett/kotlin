@@ -6,11 +6,13 @@
 @file:Suppress("PackageDirectoryMismatch") // Old package for compatibility
 package org.jetbrains.kotlin.gradle.plugin.cocoapods
 
+import groovy.lang.Closure
 import org.gradle.api.Named
 import org.gradle.api.NamedDomainObjectSet
 import org.gradle.api.Project
 import org.gradle.api.tasks.*
-import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension.CocoapodsDependency.PodspecLocation.*
+import org.gradle.util.ConfigureUtil
+import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension.CocoapodsDependency.PodLocation.*
 import java.io.File
 import java.net.URI
 
@@ -82,8 +84,8 @@ open class CocoapodsExtension(private val project: Project) {
     @Input
     var frameworkName: String = project.name.asValidFrameworkName()
 
-    @get:Internal
-    internal val sources = Sources()
+    @get:Nested
+    internal val specRepos = SpecRepos()
 
     private val _pods = project.container(CocoapodsDependency::class.java)
 
@@ -104,16 +106,16 @@ open class CocoapodsExtension(private val project: Project) {
      * Add a CocoaPods dependency to the pod built from this project.
      */
     @JvmOverloads
-    fun pod(name: String, version: String? = null, podspec: File? = null, moduleName: String = name.moduleName()) {
+    fun pod(name: String, version: String? = null, path: File? = null, moduleName: String = name.split("/")[0]) {
         // Empty string will lead to an attempt to create two podDownload tasks.
         // One is original podDownload and second is podDownload + pod.name
-        var aPodspec = podspec
-        if (podspec != null && !podspec.isDirectory) {
+        var podspec = path
+        if (path != null && !path.isDirectory) {
             project.logger.warn("Please use directory with podspec file, not podspec file itself")
-            aPodspec = podspec.parentFile
+            podspec = path.parentFile
         }
         require(name.isNotEmpty()) { "Please provide not empty pod name to avoid ambiguity" }
-        addToPods(CocoapodsDependency(name, moduleName, version, aPodspec?.let { Path(it) }))
+        addToPods(CocoapodsDependency(name, moduleName, version, podspec?.let { Path(it) }))
     }
 
 
@@ -124,12 +126,17 @@ open class CocoapodsExtension(private val project: Project) {
         // Empty string will lead to an attempt to create two podDownload tasks.
         // One is original podDownload and second is podDownload + pod.name
         require(name.isNotEmpty()) { "Please provide not empty pod name to avoid ambiguity" }
-        val dependency = CocoapodsDependency(name, name.moduleName())
+        val dependency = CocoapodsDependency(name, name.split("/")[0])
         dependency.configure()
         addToPods(dependency)
     }
 
-    private fun String.moduleName() = split("/")[0]
+    /**
+     * Add a CocoaPods dependency to the pod built from this project.
+     */
+    fun pod(name: String, configure: Closure<*>) = pod(name) {
+        ConfigureUtil.configure(configure, this)
+    }
 
     private fun addToPods(dependency: CocoapodsDependency) {
         val name = dependency.name
@@ -141,15 +148,25 @@ open class CocoapodsExtension(private val project: Project) {
      * Add spec repositories (note that spec repository is different from usual git repository).
      * Please refer to <a href="https://guides.cocoapods.org/making/private-cocoapods.html">cocoapods documentation</a>
      * for additional information.
-     * Default sources (cdn.cocoapods.org) included by default.
+     * Default sources (cdn.cocoapods.org) implicitly included.
      */
-    fun sources(configure: Sources.() -> Unit) = sources.configure()
+    fun specRepos(configure: SpecRepos.() -> Unit) = specRepos.configure()
+
+    /**
+     * Add spec repositories (note that spec repository is different from usual git repository).
+     * Please refer to <a href="https://guides.cocoapods.org/making/private-cocoapods.html">cocoapods documentation</a>
+     * for additional information.
+     * Default sources (cdn.cocoapods.org) implicitly included.
+     */
+    fun specRepos(configure: Closure<*>) = specRepos {
+        ConfigureUtil.configure(configure, this)
+    }
 
     data class CocoapodsDependency(
         private val name: String,
         @get:Input var moduleName: String,
         @get:Optional @get:Input var version: String? = null,
-        @get:Optional @get:Nested var podspec: PodspecLocation? = null
+        @get:Optional @get:Nested var source: PodLocation? = null
     ) : Named {
         @Input
         override fun getName(): String = name
@@ -157,17 +174,22 @@ open class CocoapodsExtension(private val project: Project) {
         /**
          * Url to podspec file
          */
-        fun url(url: String): PodspecLocation = Url(URI(url))
+        fun url(url: String): PodLocation = Url(URI(url))
 
         /**
          * Path to local pod
          */
-        fun path(podspecDirectory: String): PodspecLocation = Path(File(podspecDirectory))
+        fun path(podspecDirectory: String): PodLocation = Path(File(podspecDirectory))
+
+        /**
+         * Path to local pod
+         */
+        fun path(podspecDirectory: File): PodLocation = Path(podspecDirectory)
 
         /**
          * Configure pod from git repository. The podspec file is expected to be in the repository root.
          */
-        fun git(url: String, configure: (Git.() -> Unit)? = null): PodspecLocation {
+        fun git(url: String, configure: (Git.() -> Unit)? = null): PodLocation {
             val git = Git(URI(url))
             if (configure != null) {
                 git.configure()
@@ -175,15 +197,43 @@ open class CocoapodsExtension(private val project: Project) {
             return git
         }
 
-        sealed class PodspecLocation {
-            data class Url(@get:Input val url: URI) : PodspecLocation()
-            data class Path(@get:InputDirectory val dir: File) : PodspecLocation()
+        /**
+         * Configure pod from git repository. The podspec file is expected to be in the repository root.
+         */
+        fun git(url: String) = git(url) { }
+
+        /**
+         * Configure pod from git repository. The podspec file is expected to be in the repository root.
+         */
+        fun git(url: String, configure: Closure<*>) = git(url) {
+            ConfigureUtil.configure(configure, this)
+        }
+
+        sealed class PodLocation {
+            internal abstract fun getLocalPath(project: Project, podName: String): String
+
+            data class Url(@get:Input val url: URI) : PodLocation() {
+                override fun getLocalPath(project: Project, podName: String): String {
+                    return project.cocoapodsBuildDirs.externalSources("url").absolutePath
+                }
+            }
+
+            data class Path(@get:InputDirectory val dir: File) : PodLocation() {
+                override fun getLocalPath(project: Project, podName: String): String {
+                    return dir.absolutePath
+                }
+            }
+
             data class Git(
                 @get:Input val url: URI,
                 @get:Input @get:Optional var branch: String? = null,
                 @get:Input @get:Optional var tag: String? = null,
                 @get:Input @get:Optional var commit: String? = null
-            ) : PodspecLocation()
+            ) : PodLocation() {
+                override fun getLocalPath(project: Project, podName: String): String {
+                    return project.cocoapodsBuildDirs.externalSources("git").resolve(podName).absolutePath
+                }
+            }
         }
     }
 
@@ -196,19 +246,17 @@ open class CocoapodsExtension(private val project: Project) {
         override fun getName(): String = name
     }
 
-    class Sources {
+    class SpecRepos {
         @get:Internal
-        internal val sourcesCollection = mutableSetOf<Source>()
+        internal val specRepos = mutableSetOf<URI>()
 
         fun url(url: String) {
-            sourcesCollection.add(Source(URI(url)))
+            specRepos.add(URI(url))
         }
 
-        @Internal
-        internal fun getAll(): List<URI> {
-            return sourcesCollection.map(Source::url)
+        @Input
+        internal fun getAll(): Collection<URI> {
+            return specRepos
         }
-
-        class Source(@get:Input val url: URI)
     }
 }

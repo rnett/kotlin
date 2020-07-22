@@ -287,7 +287,22 @@ class CocoaPodsIT : BaseGradleIT() {
         val podspec = "$gitDownloadPodName.podspec"
         val repo = "https://raw.githubusercontent.com/AFNetworking/AFNetworking/master"
         with(project.gradleBuildScript()) {
-            addPod(gitDownloadPodName, "podspec = url(\"$repo/$podspec\")")
+            addPod(gitDownloadPodName, "source = url(\"$repo/$podspec\")")
+        }
+        val hooks = CustomHooks()
+        hooks.addHook {
+            assertTrue(url().resolve(podspec).exists())
+        }
+        project.testDownload(":podDownload", hooks, listOf(gitDownloadRepo))
+    }
+
+    @Test
+    fun testPodDownloadUrlWithHyphen() {
+        val project = getProjectByName(templateProjectName)
+        val podspec = "kotlin_library.podspec"
+        val repo = "https://raw.githubusercontent.com/alozhkin/kotlin-library/master"
+        with(project.gradleBuildScript()) {
+            addPod(gitDownloadPodName, "source = url(\"$repo/$podspec\")")
         }
         val hooks = CustomHooks()
         hooks.addHook {
@@ -344,12 +359,12 @@ class CocoaPodsIT : BaseGradleIT() {
 
     // paths
 
-    private fun CompiledProject.url() = synthetic().resolve("url")
+    private fun CompiledProject.url() = externalSources().resolve("url")
 
-    private fun CompiledProject.git() = synthetic().resolve("git")
+    private fun CompiledProject.git() = externalSources().resolve("git")
 
-    private fun CompiledProject.synthetic() =
-        fileInWorkingDir("build").resolve("cocoapods").resolve("synthetic")
+    private fun CompiledProject.externalSources() =
+        fileInWorkingDir("build").resolve("cocoapods").resolve("externalSources")
 
 
     // test configuration phase
@@ -420,7 +435,7 @@ class CocoaPodsIT : BaseGradleIT() {
         appendToCocoapodsBlock(podBlock)
     }
 
-    private fun File.addSource(source: String) = appendToCocoapodsBlock("url(\"$source\")".wrap("sources"))
+    private fun File.addSource(source: String) = appendToCocoapodsBlock("url(\"$source\")".wrap("specRepos"))
 
     private fun File.appendToCocoapodsBlock(str: String) = appendLine(str.wrap("cocoapods").wrap("kotlin"))
 
@@ -441,7 +456,7 @@ class CocoaPodsIT : BaseGradleIT() {
         val branch = if (branchName != null) "branch = \"$branchName\"" else ""
         val commit = if (commitName != null) "commit = \"$commitName\"" else ""
         val tag = if (tagName != null) "tag = \"$tagName\"" else ""
-        return """podspec = git("$repo") {
+        return """source = git("$repo") {
                       |    $branch
                       |    $commit
                       |    $tag

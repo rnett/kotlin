@@ -6,12 +6,12 @@
 package org.jetbrains.kotlin.gradle.targets.native.tasks
 
 import org.gradle.api.DefaultTask
-import org.gradle.api.provider.Property
+import org.gradle.api.artifacts.repositories.ArtifactRepository
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.Optional
 import org.jetbrains.kotlin.gradle.plugin.cocoapods.*
-import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension.CocoapodsDependency.PodspecLocation.*
+import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension.CocoapodsDependency.PodLocation.*
 import org.jetbrains.kotlin.gradle.plugin.cocoapods.cocoapodsBuildDirs
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.konan.target.Family
@@ -106,17 +106,17 @@ abstract class CocoapodsWithSyntheticTask : DefaultTask() {
 
 abstract class DownloadCocoapodsTask : CocoapodsWithSyntheticTask() {
     @Input
-    val podName: Property<String> = project.objects.property(String::class.java)
+    lateinit var podName: Provider<String>
 }
 
 open class PodDownloadUrlTask : DownloadCocoapodsTask() {
 
     @Nested
-    val podspecLocation: Property<Url> = project.objects.property(Url::class.java)
+    lateinit var podspecLocation: Provider<Url>
 
     @get:Internal
     internal val urlDir = project.provider {
-        project.cocoapodsBuildDirs.synthetic("url")
+        project.cocoapodsBuildDirs.externalSources("url")
     }
 
     @get:OutputFile
@@ -126,18 +126,38 @@ open class PodDownloadUrlTask : DownloadCocoapodsTask() {
 
     @TaskAction
     fun download() {
-        val curlCommand = listOf(
-            "curl",
-            "${podspecLocation.get().url}",
-            "-f",
-            "-L",
-            "-o", podspecFile.get().name,
-            "--create-dirs",
-            "--netrc-optional",
-            "--retry", "2"
+        val repoUrl = podspecLocation.get().url.toString().substringBeforeLast("/")
+        val repo = setupRepo(repoUrl)
+
+        val compilerDependency = project.dependencies.create(
+            mapOf(
+                "name" to podName.get(),
+                "ext" to "podspec"
+            )
         )
-        val configProcess: ProcessBuilder.() -> Unit = { directory(urlDir.get()) }
-        runCommand(curlCommand, configProcess)
+
+        val configuration = project.configurations.detachedConfiguration(compilerDependency)
+
+        val podspec = configuration.files.single()
+        project.copy {
+            it.from(podspec.absolutePath)
+            it.into(project.cocoapodsBuildDirs.externalSources("url"))
+            it.rename { "${podName.get()}.podspec" }
+        }
+
+        project.repositories.remove(repo)
+    }
+
+    private fun setupRepo(repoUrl: String): ArtifactRepository {
+        return project.repositories.ivy { repo ->
+            repo.setUrl(repoUrl)
+            repo.patternLayout {
+                it.artifact("[artifact].[ext]")
+            }
+            repo.metadataSources {
+                it.artifact()
+            }
+        }
     }
 }
 
@@ -145,17 +165,17 @@ open class PodDownloadUrlTask : DownloadCocoapodsTask() {
 open class PodDownloadGitTask : DownloadCocoapodsTask() {
 
     @Nested
-    val podspecLocation: Property<Git> = project.objects.property(Git::class.java)
+    lateinit var podSource: Provider<Git>
 
     @get:OutputDirectory
     internal val gitDir = project.provider {
-        project.cocoapodsBuildDirs.synthetic("git")
+        project.cocoapodsBuildDirs.externalSources("git")
     }
 
     @TaskAction
     fun download() {
         gitDir.get().resolve(podName.get()).deleteRecursively()
-        val git = podspecLocation.get()
+        val git = podSource.get()
         val branch = git.tag ?: git.branch
         val commit = git.commit
         val url = git.url
@@ -296,15 +316,9 @@ open class PodGenTask : CocoapodsWithSyntheticTask() {
     @TaskAction
     fun generate() {
         val podspecDir = podspecProvider.get().parentFile
-        val localPodspecPaths = cocoapodsExtension.pods
-            .mapNotNull { (it.podspec as? Path)?.dir?.absolutePath }
-            .toMutableList()
-        localPodspecPaths += cocoapodsExtension.pods
-            .filter { it.podspec is Git }
-            .map { project.cocoapodsBuildDirs.synthetic("git").resolve(it.name).absolutePath }
-        localPodspecPaths += project.cocoapodsBuildDirs.synthetic("url").absolutePath
+        val localPodspecPaths = cocoapodsExtension.pods.mapNotNull { it.source?.getLocalPath(project, it.name) }
 
-        val sources = cocoapodsExtension.sources.getAll().toMutableList()
+        val sources = cocoapodsExtension.specRepos.getAll().toMutableList()
         sources += URI("https://cdn.cocoapods.org")
 
         val podGenProcessArgs = listOfNotNull(

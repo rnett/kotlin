@@ -16,7 +16,7 @@ import org.jetbrains.kotlin.gradle.dsl.multiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.addExtension
 import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension.CocoapodsDependency
-import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension.CocoapodsDependency.PodspecLocation.*
+import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension.CocoapodsDependency.PodLocation.*
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.whenEvaluated
 import org.jetbrains.kotlin.gradle.targets.native.tasks.*
@@ -48,7 +48,11 @@ internal class CocoapodsBuildDirs(val project: Project) {
         get() = root.resolve("synthetic")
 
     fun synthetic(kotlinNativeTarget: KotlinNativeTarget) = synthetic.resolve(kotlinNativeTarget.name)
-    fun synthetic(name: String) = synthetic.resolve(name)
+
+    val externalSources: File
+        get() = root.resolve("externalSources")
+
+    fun externalSources(dir: String) = externalSources.resolve(dir)
 
     fun fatFramework(buildType: String) =
         root.resolve("fat-frameworks/${buildType.toLowerCase()}")
@@ -335,17 +339,17 @@ open class KotlinCocoapodsPlugin : Plugin<Project> {
         }
 
         cocoapodsExtension.pods.all { pod ->
-            val podspec = pod.podspec
-            val downloadPodTask = when (podspec) {
+            val podSource = pod.source
+            val downloadPodTask = when (podSource) {
                 is Git -> project.tasks.register(pod.toPodDownloadTaskName, PodDownloadGitTask::class.java) {
                     it.cocoapodsExtension = cocoapodsExtension
-                    it.podName.set(pod.name)
-                    it.podspecLocation.set(podspec)
+                    it.podName = project.provider { pod.name }
+                    it.podSource = project.provider { podSource as Git }
                 }
                 is Url -> project.tasks.register(pod.toPodDownloadTaskName, PodDownloadUrlTask::class.java) {
                     it.cocoapodsExtension = cocoapodsExtension
-                    it.podName.set(pod.name)
-                    it.podspecLocation.set(podspec)
+                    it.podName = project.provider { pod.name }
+                    it.podspecLocation = project.provider { podSource as Url }
                 }
                 else -> return@all
             }
