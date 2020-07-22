@@ -1,0 +1,7 @@
+compiler/testData/compileKotlinAgainstCustomBinaries/jvmDefaultClashWithOld/source.kt:15:7: error: explicit override is required for 'public open var test: String defined in SubCheckClass' member. Class is part of mixed hierarchy with old interface method body compilation scheme and new one (-Xjvm-default='all'). Mentioned clash is with implicit class override 'public open var test: String defined in base.CheckClass' that has more priority on runtime.
+class SubCheckClass : CheckClass(), SubCheck
+      ^
+compiler/testData/compileKotlinAgainstCustomBinaries/jvmDefaultClashWithOld/source.kt:15:7: error: explicit override is required for 'public open fun test(): String defined in SubCheckClass' member. Class is part of mixed hierarchy with old interface method body compilation scheme and new one (-Xjvm-default='all'). Mentioned clash is with implicit class override 'public open fun test(): String defined in base.CheckClass' that has more priority on runtime.
+class SubCheckClass : CheckClass(), SubCheck
+      ^
+COMPILATION_ERROR

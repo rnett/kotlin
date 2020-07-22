@@ -177,7 +177,8 @@ class JvmDefaultChecker(val jvmTarget: JvmTarget, project: Project) : Declaratio
                 ErrorsJvm.EXPLICIT_OVERRIDE_REQUIRED_IN_MIXED_MODE.on(
                     declaration,
                     getDirectMember(inheritedFun),
-                    getDirectMember(clashMember)
+                    getDirectMember(clashMember),
+                    jvmDefaultMode.description
                 )
             )
         }
