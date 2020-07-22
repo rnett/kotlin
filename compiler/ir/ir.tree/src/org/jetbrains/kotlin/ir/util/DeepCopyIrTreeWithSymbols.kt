@@ -65,6 +65,14 @@ open class DeepCopyIrTreeWithSymbols(
     }
 
     protected fun mapDeclarationOrigin(origin: IrDeclarationOrigin) = origin
+    protected fun mapDeclarationOrigin(declaration: IrDeclaration):IrDeclarationOrigin {
+        return when {
+            declaration.origin == IrDeclarationOrigin.LOCAL_FUNCTION_FOR_LAMBDA && (declaration is IrFunction) && !declaration.isInline -> {
+                IrDeclarationLocalFunctionForLambda(declaration.parent)
+            }
+            else -> declaration.origin
+        }
+    }
     protected fun mapStatementOrigin(origin: IrStatementOrigin?) = origin
 
     protected inline fun <reified T : IrElement> T.transform() =
@@ -153,7 +161,7 @@ open class DeepCopyIrTreeWithSymbols(
     override fun visitSimpleFunction(declaration: IrSimpleFunction): IrSimpleFunction =
         IrFunctionImpl(
             declaration.startOffset, declaration.endOffset,
-            mapDeclarationOrigin(declaration.origin),
+            mapDeclarationOrigin(declaration),
             symbolRemapper.getDeclaredFunction(declaration.symbol),
             symbolRenamer.getFunctionName(declaration.symbol),
             declaration.visibility,
