@@ -30,10 +30,7 @@ class PersistingIrExpressionBody private constructor(
     override val endOffset: Int,
     private var expressionField: IrExpression? = null,
     override var initializer: (PersistingIrExpressionBody.() -> Unit)? = null
-) :
-    PersistingIrBodyBase<PersistingIrExpressionBody>,
-    IrExpressionBody {
-
+) : IrExpressionBody(), PersistingIrBodyBase<PersistingIrExpressionBody> {
     override var lastModified: Int = stageController.currentStage
     override var loweredUpTo: Int = stageController.currentStage
     override var values: Array<Carrier>? = null
