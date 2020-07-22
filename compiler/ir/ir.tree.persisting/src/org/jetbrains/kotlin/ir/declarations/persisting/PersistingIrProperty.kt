@@ -40,8 +40,8 @@ abstract class PersistingIrPropertyCommon(
     override val isDelegated: Boolean,
     override val isExternal: Boolean,
     override val isExpect: Boolean,
-) : PersistingIrDeclarationBase<PropertyCarrier>,
-    IrProperty,
+) : IrProperty(),
+    PersistingIrDeclarationBase<PropertyCarrier>,
     PropertyCarrier {
 
     override var lastModified: Int = stageController.currentStage

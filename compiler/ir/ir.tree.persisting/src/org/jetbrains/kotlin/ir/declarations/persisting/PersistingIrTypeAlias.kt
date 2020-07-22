@@ -25,9 +25,8 @@ class PersistingIrTypeAlias(
     override val expandedType: IrType,
     override val isActual: Boolean,
     origin: IrDeclarationOrigin
-) :
+) : IrTypeAlias(),
     PersistingIrDeclarationBase<TypeAliasCarrier>,
-    IrTypeAlias,
     TypeAliasCarrier {
 
     init {

@@ -40,9 +40,8 @@ class PersistingIrTypeParameter(
     override val index: Int,
     override val isReified: Boolean,
     override val variance: Variance
-) :
+) : IrTypeParameter(),
     PersistingIrDeclarationBase<TypeParameterCarrier>,
-    IrTypeParameter,
     TypeParameterCarrier {
 
     init {

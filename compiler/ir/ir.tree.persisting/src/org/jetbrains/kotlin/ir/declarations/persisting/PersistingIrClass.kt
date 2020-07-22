@@ -44,9 +44,8 @@ class PersistingIrClass(
     override val isExpect: Boolean = false,
     override val isFun: Boolean = false,
     override val source: SourceElement = SourceElement.NO_SOURCE
-) :
+) : IrClass(),
     PersistingIrDeclarationBase<ClassCarrier>,
-    IrClass,
     ClassCarrier {
 
     init {

@@ -40,8 +40,8 @@ class PersistingIrField(
     override val isFinal: Boolean,
     override val isExternal: Boolean,
     override val isStatic: Boolean
-) : PersistingIrDeclarationBase<FieldCarrier>,
-    IrField,
+) : IrField(),
+    PersistingIrDeclarationBase<FieldCarrier>,
     FieldCarrier {
 
     init {

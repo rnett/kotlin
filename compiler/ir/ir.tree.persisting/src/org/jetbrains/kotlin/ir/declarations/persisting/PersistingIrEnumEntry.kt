@@ -32,8 +32,8 @@ class PersistingIrEnumEntry(
     origin: IrDeclarationOrigin,
     override val symbol: IrEnumEntrySymbol,
     override val name: Name
-) : PersistingIrDeclarationBase<EnumEntryCarrier>,
-    IrEnumEntry,
+) : IrEnumEntry(),
+    PersistingIrDeclarationBase<EnumEntryCarrier>,
     EnumEntryCarrier {
 
     init {

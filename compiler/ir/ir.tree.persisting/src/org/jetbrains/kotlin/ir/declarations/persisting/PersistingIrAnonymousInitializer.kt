@@ -34,8 +34,8 @@ class PersistingIrAnonymousInitializer(
     origin: IrDeclarationOrigin,
     override val symbol: IrAnonymousInitializerSymbol,
     override val isStatic: Boolean = false
-) : PersistingIrDeclarationBase<AnonymousInitializerCarrier>,
-    IrAnonymousInitializer,
+) : IrAnonymousInitializer(),
+    PersistingIrDeclarationBase<AnonymousInitializerCarrier>,
     AnonymousInitializerCarrier {
 
     init {

@@ -37,7 +37,7 @@ class PersistingIrLocalDelegatedProperty(
     override val isVar: Boolean
 ) :
     PersistingIrDeclarationBase<LocalDelegatedPropertyCarrier>,
-    IrLocalDelegatedProperty,
+    IrLocalDelegatedProperty(),
     LocalDelegatedPropertyCarrier {
 
     init {

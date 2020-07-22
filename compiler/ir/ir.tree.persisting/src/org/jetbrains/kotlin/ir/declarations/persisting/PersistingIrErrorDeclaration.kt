@@ -31,7 +31,7 @@ class PersistingIrErrorDeclaration(
     override val startOffset: Int,
     override val endOffset: Int,
     override val descriptor: DeclarationDescriptor
-) : PersistingIrDeclarationBase<ErrorCarrier>, IrErrorDeclaration, ErrorCarrier {
+) : PersistingIrDeclarationBase<ErrorCarrier>, IrErrorDeclaration(), ErrorCarrier {
     override var lastModified: Int = stageController.currentStage
     override var loweredUpTo: Int = stageController.currentStage
     override var values: Array<Carrier>? = null
