@@ -235,7 +235,7 @@ class CocoaPodsIT : BaseGradleIT() {
         val podspec = "$defaultPodName.podspec"
         val repo = "https://raw.githubusercontent.com/AFNetworking/AFNetworking/master"
         with(project.gradleBuildScript()) {
-            addPod(defaultPodName, "source = url(\"$repo/$podspec\")")
+            addPod(defaultPodName, "source = podspec(uri(\"$repo/$podspec\"))")
         }
         hooks.addHook {
             assertTrue(url().resolve(podspec).exists())
@@ -254,15 +254,6 @@ class CocoaPodsIT : BaseGradleIT() {
             checkGitRepo(tagName = tag)
         }
         project.testImport(listOf(defaultPodRepo))
-    }
-
-    @Test
-    fun warnIfDeprecatedPodspecPathIsUsed() {
-        project = getProjectByName(cocoapodsSingleKtPod)
-        hooks.addHook {
-            assertContains("Please use directory with podspec file, not podspec file itself")
-        }
-        project.test(":kotlin-library:podDownload")
     }
 
     @Ignore

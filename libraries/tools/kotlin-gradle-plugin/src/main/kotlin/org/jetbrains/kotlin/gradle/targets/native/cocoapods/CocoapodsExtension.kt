@@ -107,15 +107,14 @@ open class CocoapodsExtension(private val project: Project) {
      */
     @JvmOverloads
     fun pod(name: String, version: String? = null, path: File? = null, moduleName: String = name.split("/")[0]) {
+        var podspecDir = path
+        if (path != null && !path.isDirectory) {
+            podspecDir = path.parentFile
+        }
         // Empty string will lead to an attempt to create two podDownload tasks.
         // One is original podDownload and second is podDownload + pod.name
-        var podspec = path
-        if (path != null && !path.isDirectory) {
-            project.logger.warn("Please use directory with podspec file, not podspec file itself")
-            podspec = path.parentFile
-        }
         require(name.isNotEmpty()) { "Please provide not empty pod name to avoid ambiguity" }
-        addToPods(CocoapodsDependency(name, moduleName, version, podspec?.let { Path(it) }))
+        addToPods(CocoapodsDependency(name, moduleName, version, podspecDir?.let { Path(it) }))
     }
 
 
@@ -174,7 +173,12 @@ open class CocoapodsExtension(private val project: Project) {
         /**
          * Url to podspec file
          */
-        fun url(url: String): PodLocation = Url(URI(url))
+        fun podspec(url: URI): PodLocation = Url(url)
+
+        /**
+         * Path to podspec file
+         */
+        fun podspec(podspec: File): PodLocation = Path(podspec.parentFile)
 
         /**
          * Path to local pod
