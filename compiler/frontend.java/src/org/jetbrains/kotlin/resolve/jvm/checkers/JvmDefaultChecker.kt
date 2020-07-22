@@ -82,58 +82,56 @@ class JvmDefaultChecker(val jvmTarget: JvmTarget, project: Project) : Declaratio
                     }
                 }
             }
-        } else if (jvmDefaultMode.isEnabled &&
-            !isInterface(descriptor) &&
-            !isAnnotationClass(descriptor) &&
-            descriptor is ClassDescriptor
-        ) {
-            val performSpecializationCheck = jvmDefaultMode.isCompatibility && !descriptor.hasJvmDefaultNoCompatibilityAnnotation() &&
-                    //TODO: maybe remove this check for JVM compatibility
-                    !(descriptor.modality !== Modality.OPEN && descriptor.modality !== Modality.ABSTRACT || descriptor.isEffectivelyPrivateApi)
+        }
 
-            val performClashCheck = descriptor.getSuperClassNotAny() != null
+        if (!jvmDefaultMode.isEnabled || descriptor !is ClassDescriptor || isInterface(descriptor) || isAnnotationClass(descriptor)) return
+        //JvmDefaults members checks across class inheritance hierarchy
+        val performSpecializationCheck = jvmDefaultMode.isCompatibility && !descriptor.hasJvmDefaultNoCompatibilityAnnotation() &&
+                //TODO: maybe remove this check for JVM compatibility
+                !(descriptor.modality !== Modality.OPEN && descriptor.modality !== Modality.ABSTRACT || descriptor.isEffectivelyPrivateApi)
 
-            if (performClashCheck || performSpecializationCheck) {
-                getNonPrivateTraitMembersForDelegation(
-                    descriptor,
-                    returnImplNotDelegate = true
-                ).forEach { (inheritedMember, actualImplementation) ->
-                    if (actualImplementation.isCompiledToJvmDefaultWithProperMode(jvmDefaultMode)) {
-                        if (actualImplementation is FunctionDescriptor && inheritedMember is FunctionDescriptor) {
-                            if (checkSpecializationInCompatibilityMode(
-                                    inheritedMember,
-                                    actualImplementation,
-                                    context,
-                                    declaration,
-                                    performSpecializationCheck
-                                )
-                            ) {
-                                checkPossibleClashMember(inheritedMember, jvmDefaultMode, context, declaration)
-                            }
-                        } else if (actualImplementation is PropertyDescriptor && inheritedMember is PropertyDescriptor) {
-                            val getterImpl = actualImplementation.getter
-                            val getterInherited = inheritedMember.getter
-                            if (getterImpl == null || getterInherited == null || !jvmDefaultMode.isCompatibility ||
-                                checkSpecializationInCompatibilityMode(getterImpl, getterImpl, context, declaration, performSpecializationCheck)
-                            ) {
-                                if (actualImplementation.isVar && inheritedMember.isVar) {
-                                    val setterImpl = actualImplementation.setter
-                                    val setterInherited = inheritedMember.setter
-                                    if (setterImpl != null && setterInherited != null) {
-                                        if (!checkSpecializationInCompatibilityMode(
-                                                setterImpl,
-                                                setterImpl,
-                                                context,
-                                                declaration,
-                                                performSpecializationCheck
-                                            )
-                                        ) return@forEach
-                                    }
-                                }
+        //Should we check clash with implicit class member (that comes from old compilation scheme) and specialization for compatibility mode
+        // If specialization check is reported clash one shouldn't be reported
+        if (descriptor.getSuperClassNotAny() == null && !performSpecializationCheck) return
 
-                                checkPossibleClashMember(inheritedMember, jvmDefaultMode, context, declaration)
+        getNonPrivateTraitMembersForDelegation(
+            descriptor,
+            returnImplNotDelegate = true
+        ).forEach { (inheritedMember, actualImplementation) ->
+            if (actualImplementation.isCompiledToJvmDefaultWithProperMode(jvmDefaultMode)) {
+                if (actualImplementation is FunctionDescriptor && inheritedMember is FunctionDescriptor) {
+                    if (checkSpecializationInCompatibilityMode(
+                            inheritedMember,
+                            actualImplementation,
+                            context,
+                            declaration,
+                            performSpecializationCheck
+                        )
+                    ) {
+                        checkPossibleClashMember(inheritedMember, jvmDefaultMode, context, declaration)
+                    }
+                } else if (actualImplementation is PropertyDescriptor && inheritedMember is PropertyDescriptor) {
+                    val getterImpl = actualImplementation.getter
+                    val getterInherited = inheritedMember.getter
+                    if (getterImpl == null || getterInherited == null || !jvmDefaultMode.isCompatibility ||
+                        checkSpecializationInCompatibilityMode(getterImpl, getterImpl, context, declaration, performSpecializationCheck)
+                    ) {
+                        if (actualImplementation.isVar && inheritedMember.isVar) {
+                            val setterImpl = actualImplementation.setter
+                            val setterInherited = inheritedMember.setter
+                            if (setterImpl != null && setterInherited != null) {
+                                if (!checkSpecializationInCompatibilityMode(
+                                        setterImpl,
+                                        setterImpl,
+                                        context,
+                                        declaration,
+                                        performSpecializationCheck
+                                    )
+                                ) return@forEach
                             }
                         }
+
+                        checkPossibleClashMember(inheritedMember, jvmDefaultMode, context, declaration)
                     }
                 }
             }
