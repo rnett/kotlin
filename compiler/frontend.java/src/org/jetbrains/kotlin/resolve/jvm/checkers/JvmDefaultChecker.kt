@@ -85,7 +85,7 @@ class JvmDefaultChecker(val jvmTarget: JvmTarget, project: Project) : Declaratio
         }
 
         if (!jvmDefaultMode.isEnabled || descriptor !is ClassDescriptor || isInterface(descriptor) || isAnnotationClass(descriptor)) return
-        //JvmDefaults members checks across class inheritance hierarchy
+        //JvmDefaults members checks across class hierarchy
         val performSpecializationCheck = jvmDefaultMode.isCompatibility && !descriptor.hasJvmDefaultNoCompatibilityAnnotation() &&
                 //TODO: maybe remove this check for JVM compatibility
                 !(descriptor.modality !== Modality.OPEN && descriptor.modality !== Modality.ABSTRACT || descriptor.isEffectivelyPrivateApi)
@@ -97,8 +97,8 @@ class JvmDefaultChecker(val jvmTarget: JvmTarget, project: Project) : Declaratio
         getNonPrivateTraitMembersForDelegation(
             descriptor,
             returnImplNotDelegate = true
-        ).forEach { (inheritedMember, actualImplementation) ->
-            if (actualImplementation.isCompiledToJvmDefaultWithProperMode(jvmDefaultMode)) {
+        ).filter { (_, actualImplementation) -> actualImplementation.isCompiledToJvmDefaultWithProperMode(jvmDefaultMode) }
+            .forEach { (inheritedMember, actualImplementation) ->
                 if (actualImplementation is FunctionDescriptor && inheritedMember is FunctionDescriptor) {
                     if (checkSpecializationInCompatibilityMode(
                             inheritedMember,
@@ -114,14 +114,20 @@ class JvmDefaultChecker(val jvmTarget: JvmTarget, project: Project) : Declaratio
                     val getterImpl = actualImplementation.getter
                     val getterInherited = inheritedMember.getter
                     if (getterImpl == null || getterInherited == null || !jvmDefaultMode.isCompatibility ||
-                        checkSpecializationInCompatibilityMode(getterImpl, getterImpl, context, declaration, performSpecializationCheck)
+                        checkSpecializationInCompatibilityMode(
+                            getterInherited,
+                            getterImpl,
+                            context,
+                            declaration,
+                            performSpecializationCheck
+                        )
                     ) {
                         if (actualImplementation.isVar && inheritedMember.isVar) {
                             val setterImpl = actualImplementation.setter
                             val setterInherited = inheritedMember.setter
                             if (setterImpl != null && setterInherited != null) {
                                 if (!checkSpecializationInCompatibilityMode(
-                                        setterImpl,
+                                        setterInherited,
                                         setterImpl,
                                         context,
                                         declaration,
@@ -135,7 +141,6 @@ class JvmDefaultChecker(val jvmTarget: JvmTarget, project: Project) : Declaratio
                     }
                 }
             }
-        }
     }
 
     private fun checkSpecializationInCompatibilityMode(
