@@ -9,12 +9,14 @@ package org.jetbrains.kotlin.gradle.tasks
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.plugins.ExtensionAware
+import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.wrapper.Wrapper
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.dsl.multiplatformExtensionOrNull
 import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension
+import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension.*
 import org.jetbrains.kotlin.gradle.plugin.cocoapods.KotlinCocoapodsPlugin
 import org.jetbrains.kotlin.gradle.plugin.cocoapods.KotlinCocoapodsPlugin.Companion.COCOAPODS_EXTENSION_NAME
 import org.jetbrains.kotlin.gradle.plugin.cocoapods.KotlinCocoapodsPlugin.Companion.GENERATE_WRAPPER_PROPERTY
@@ -37,18 +39,58 @@ open class PodspecTask : DefaultTask() {
     internal val outputFileProvider: Provider<File>
         get() = project.provider { project.file("$specName.podspec") }
 
+    @get:Input
+    internal lateinit var needPodspec: Provider<Boolean>
+
     @get:Nested
-    internal lateinit var cocoapodsExtension: CocoapodsExtension
+    val pods = project.objects.listProperty(CocoapodsDependency::class.java)
+
+    @get:Input
+    internal lateinit var version: Provider<String>
+
+    @get:Input
+    @get:Optional
+    internal val homepage = project.objects.property(String::class.java)
+
+    @get:Input
+    @get:Optional
+    internal val license = project.objects.property(String::class.java)
+
+    @get:Input
+    @get:Optional
+    internal val authors = project.objects.property(String::class.java)
+
+    @get:Input
+    @get:Optional
+    internal val summary = project.objects.property(String::class.java)
+
+    @get:Input
+    internal lateinit var frameworkName: Provider<String>
+
+    @get:Nested
+    internal lateinit var ios: Provider<PodspecPlatformSettings>
+
+    @get:Nested
+    internal lateinit var osx: Provider<PodspecPlatformSettings>
+
+    @get:Nested
+    internal lateinit var tvos: Provider<PodspecPlatformSettings>
+
+    @get:Nested
+    internal lateinit var watchos: Provider<PodspecPlatformSettings>
 
     init {
-        onlyIf { cocoapodsExtension.needPodspec }
+        onlyIf { needPodspec.get() }
     }
+
+    fun Provider<String>.getOrEmpty() = getOrElse("")
+
 
     @TaskAction
     fun generate() {
 
         val frameworkDir = project.cocoapodsBuildDirs.framework.relativeTo(outputFileProvider.get().parentFile).path
-        val dependencies = cocoapodsExtension.pods.map { pod ->
+        val dependencies = pods.get().map { pod ->
             val versionSuffix = if (pod.version != null) ", '${pod.version}'" else ""
             "|    spec.dependency '${pod.name}'$versionSuffix"
         }.joinToString(separator = "\n")
@@ -68,10 +110,8 @@ open class PodspecTask : DefaultTask() {
         val syncTask = "${project.path}:$SYNC_TASK_NAME"
 
         val deploymentTargets = run {
-            with(cocoapodsExtension) {
-                listOf(ios, osx, tvos, watchos).filter { it.deploymentTarget != null }.joinToString("\n") {
-                    "|    spec.${it.name}.deployment_target = '${it.deploymentTarget}'"
-                }
+            listOf(ios, osx, tvos, watchos).map { it.get() }.filter { it.deploymentTarget != null }.joinToString("\n") {
+                "|    spec.${it.name}.deployment_target = '${it.deploymentTarget}'"
             }
         }
 
@@ -80,15 +120,15 @@ open class PodspecTask : DefaultTask() {
                 """
                 |Pod::Spec.new do |spec|
                 |    spec.name                     = '$specName'
-                |    spec.version                  = '${cocoapodsExtension.version}'
-                |    spec.homepage                 = '${cocoapodsExtension.homepage.orEmpty()}'
+                |    spec.version                  = '${version.get()}'
+                |    spec.homepage                 = '${homepage.getOrEmpty()}'
                 |    spec.source                   = { :git => "Not Published", :tag => "Cocoapods/#{spec.name}/#{spec.version}" }
-                |    spec.authors                  = '${cocoapodsExtension.authors.orEmpty()}'
-                |    spec.license                  = '${cocoapodsExtension.license.orEmpty()}'
-                |    spec.summary                  = '${cocoapodsExtension.summary.orEmpty()}'
+                |    spec.authors                  = '${authors.getOrEmpty()}'
+                |    spec.license                  = '${license.getOrEmpty()}'
+                |    spec.summary                  = '${summary.getOrEmpty()}'
                 |
                 |    spec.static_framework         = true
-                |    spec.vendored_frameworks      = "$frameworkDir/${cocoapodsExtension.frameworkName}.framework"
+                |    spec.vendored_frameworks      = "$frameworkDir/${frameworkName.get()}.framework"
                 |    spec.libraries                = "c++"
                 |    spec.module_name              = "#{spec.name}_umbrella"
                 |
@@ -170,13 +210,10 @@ open class DummyFrameworkTask : DefaultTask() {
     val destinationDir = project.cocoapodsBuildDirs.framework
 
     @Input
-    val frameworkNameProvider: Provider<String> = project.provider { cocoapodsExtension.frameworkName }
-
-    @get:Nested
-    internal lateinit var cocoapodsExtension: CocoapodsExtension
+    lateinit var frameworkName: Provider<String>
 
     private val frameworkDir: File
-        get() = destinationDir.resolve("${frameworkNameProvider.get()}.framework")
+        get() = destinationDir.resolve("${frameworkName.get()}.framework")
 
     private fun copyResource(from: String, to: File) {
         to.parentFile.mkdirs()
@@ -224,11 +261,11 @@ open class DummyFrameworkTask : DefaultTask() {
 
         // Copy files for the dummy framework.
         copyFrameworkFile("Info.plist")
-        copyFrameworkFile("dummy", frameworkNameProvider.get())
+        copyFrameworkFile("dummy", frameworkName.get())
         copyFrameworkFile("Headers/dummy.h")
         copyFrameworkTextFile("Modules/module.modulemap") {
             if (it == "framework module dummy {") {
-                it.replace("dummy", frameworkNameProvider.get())
+                it.replace("dummy", frameworkName.get())
             } else {
                 it
             }
@@ -241,8 +278,8 @@ open class DummyFrameworkTask : DefaultTask() {
  */
 open class DefFileTask : DefaultTask() {
 
-    @Nested
-    lateinit var pod: CocoapodsExtension.CocoapodsDependency
+    @get:Nested
+    lateinit var pod: CocoapodsDependency
 
     @get:OutputFile
     val outputFile: File

@@ -16,7 +16,8 @@ group = "org.jetbrains.kotlin.sample.native"
 version = "1.0"
 
 kotlin {
-    iosX64("iOS")
+    // that target considered as default by CocoaPodsIT
+    iosX64()
     cocoapods {
         homepage = "https://github.com/JetBrains/kotlin"
         summary = "CocoaPods test library"
